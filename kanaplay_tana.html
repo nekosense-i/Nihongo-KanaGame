@@ -1,0 +1,561 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>日语假名挑战 - 进阶篇(た/な行)</title>
+    <style>
+        :root { 
+            --bg-washi: #fcfaf2; 
+            --card-white: #ffffff;
+            --text-ink: #333333; 
+            --success-green: #2ecc71;
+            --danger-red: #e74c3c;
+            --accent-pink: #ffb7c5;
+            --opt-yellow: #fffdf0;
+        }
+        
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+            background-color: var(--bg-washi);
+            background-image: radial-gradient(#e0e0e0 0.5px, transparent 0.5px);
+            background-size: 20px 20px;
+            margin: 0; 
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 10px;
+            overflow-x: hidden;
+        }
+        
+        #fx-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10; width: 100%; height: 100%; }
+        
+        .game-box { 
+            background: var(--card-white); 
+            border-radius: 24px; 
+            padding: 20px; 
+            width: 100%; 
+            max-width: 400px; 
+            max-height: 95dvh; 
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 0 #d9d4c7, 0 20px 40px rgba(0,0,0,0.1);
+            border: 3px solid #555; 
+            text-align: center; 
+            z-index: 5; 
+            position: relative;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+        }
+
+        .mascot { 
+            font-size: 16px; color: #555; margin-bottom: 8px; font-weight: bold; flex-shrink: 0; min-height: 24px;
+        }
+
+        .info-bar { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 10px; flex-shrink: 0; 
+        }
+        .level-badge { 
+            background: #fffbe6; padding: 6px 12px; border-radius: 10px; 
+            border: 2px solid #ffe58f; font-weight: bold; color: #555; font-size: 13px;
+        }
+        .reset-btn {
+            font-size: 11px; color: #999; text-decoration: underline; cursor: pointer; background: none; border: none; padding: 5px;
+        }
+
+        .remain-badge {
+            font-size: 11px; background: #eee; padding: 2px 8px; border-radius: 10px; color: #666; margin-top: 2px; flex-shrink: 0;
+        }
+
+        /* === 倒计时条样式 === */
+        .timer-container {
+            width: 100%; height: 6px; background: #eee; border-radius: 3px; 
+            margin: 5px 0 10px 0; overflow: hidden; flex-shrink: 0;
+        }
+        .timer-bar {
+            height: 100%; background: var(--success-green); width: 100%; 
+            transition: width 0.1s linear, background-color 0.3s;
+        }
+        .timer-urgent { background: var(--danger-red) !important; box-shadow: 0 0 5px var(--danger-red); }
+
+        #daikichi {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            width: 260px; height: 260px; 
+            border-radius: 50%; border: 8px double #d9333f;
+            background: rgba(255,255,255,0.98);
+            color: #d9333f; font-weight: 900; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 20;
+            pointer-events: none; opacity: 0; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 30px rgba(217, 51, 63, 0.4);
+            text-align: center;
+            padding: 10px;
+        }
+        #daikichi.show { transform: translate(-50%, -50%) scale(1.1); opacity: 1; pointer-events: auto; cursor: pointer; }
+        
+        #daikichi-title { font-size: 56px; line-height: 1.1; margin-bottom: 5px; }
+        .daikichi-reward { font-size: 48px; margin: 0; text-shadow: 0 2px 10px rgba(0,0,0,0.1); line-height: 1.2; }
+        .daikichi-sub { font-size: 16px; color: #333; font-weight: normal; margin: 5px 0 10px 0; }
+        .next-btn { 
+            background: #d9333f; color: #fff; border: none; 
+            padding: 8px 24px; border-radius: 20px; font-size: 16px; font-weight: bold;
+            cursor: pointer; pointer-events: auto; 
+            box-shadow: 0 4px 10px rgba(217, 51, 63, 0.3);
+        }
+
+        .kana-display { 
+            font-size: 68px; font-weight: 900; color: var(--text-ink); 
+            margin: 0 0 10px 0; 
+            min-height: 80px; 
+            flex-shrink: 0; 
+            line-height: 1.2;
+        }
+        
+        @keyframes correct-pop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.15); color: var(--success-green); }
+            100% { transform: scale(1); }
+        }
+        .target-correct { animation: correct-pop 0.5s ease-out; }
+
+        @keyframes penalty-flash {
+            0%, 100% { background-color: var(--card-white); }
+            50% { background-color: #fff1f0; }
+        }
+        .penalty-active { animation: penalty-flash 0.3s ease-in-out; }
+
+        .options { 
+            display: grid; grid-template-columns: 1fr; gap: 8px; width: 100%; 
+            flex-shrink: 0; 
+        }
+        .option-btn { 
+            padding: 12px; font-size: 18px; border: 2px solid #f0f0f0;
+            background: var(--opt-yellow); border-radius: 14px; cursor: pointer; 
+            transition: all 0.15s; color: var(--text-ink); font-weight: bold;
+            box-shadow: 0 4px 0 #eee; position: relative;
+        }
+        .option-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #eee; }
+        .btn-correct { background-color: #f6ffed !important; border-color: var(--success-green) !important; color: var(--success-green) !important; box-shadow: 0 2px 0 var(--success-green) !important; }
+        .btn-wrong { background-color: #fff1f0 !important; border-color: var(--danger-red) !important; color: var(--danger-red) !important; cursor: not-allowed; box-shadow: none !important; transform: translateY(3px); }
+
+        .progress-container { 
+            width: 100%; height: 10px; background: #eaedf0; border-radius: 20px; 
+            margin-top: 15px; border: 2px solid #555; overflow: hidden; position: relative; flex-shrink: 0;
+        }
+        #progress { height: 100%; background: var(--accent-pink); width: 0%; transition: 0.4s ease; }
+
+        /* === 核心修改：5列布局 + 按钮高度优化 === */
+        .teacher-panel { 
+            margin-top: 15px; 
+            border-top: 2px dashed #ccc; 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); /* 5列 */
+            gap: 5px; 
+            padding: 15px 10px; 
+            max-height: 25vh; 
+            overflow-y: auto;
+            flex-grow: 1; 
+        }
+        .teacher-panel::-webkit-scrollbar { width: 4px; }
+        .teacher-panel::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 4px; }
+
+        /* 增高按钮以容纳双行文字 */
+        .t-btn { 
+            font-size: 10px; padding: 2px; border-radius: 8px; border: 1px solid #ccc; 
+            background: #fff; color: #333; cursor: pointer; transition: 0.2s; position: relative;
+            height: 45px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .t-btn-reward { font-size: 9px; line-height: 1; margin-top: 1px; }
+        
+        .t-btn.locked { 
+            background: #eee !important; color: #bbb !important; border-color: #eee !important;
+            pointer-events: none; opacity: 0.6;
+        }
+        .t-btn.active { border: 2px solid #333; font-weight: bold; transform: scale(1.05); z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(255,255,255,0.8); z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .start-btn {
+            font-size: 22px; padding: 12px 35px; background: #333; color: #fff;
+            border-radius: 50px; border: none; cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        .start-btn:hover { transform: scale(1.05); }
+
+        @media (max-height: 667px) {
+            .game-box { padding: 15px; }
+            .kana-display { font-size: 50px; min-height: 60px; margin: 5px 0; }
+            .option-btn { padding: 10px; font-size: 16px; }
+            .teacher-panel { max-height: 20vh; }
+        }
+
+    </style>
+</head>
+<body>
+    <div id="start-overlay">
+        <button class="start-btn" onclick="initGame()">開始</button>
+    </div>
+
+    <div id="daikichi">
+        <div id="daikichi-title">大吉</div>
+        <div class="daikichi-reward" id="daikichi-icon">🏆</div>
+        <div class="daikichi-sub" id="daikichi-msg">完璧！</div>
+        <button class="next-btn" onclick="nextLevelAction()">次へ</button>
+    </div>
+
+    <canvas id="fx-canvas"></canvas>
+    <div id="game-container" class="game-box">
+        <div class="info-bar">
+            <div class="level-badge" id="level-display">准备中...</div>
+            <button class="reset-btn" onclick="resetProgress()">リセット</button>
+        </div>
+        
+        <div id="mascot" class="mascot">頑張れ！( •̀ ω •́ )y</div>
+        <div class="remain-badge">残り: <span id="queue-count">5</span></div>
+        
+        <div class="timer-container"><div id="timer-bar" class="timer-bar"></div></div>
+        
+        <div class="kana-display" id="target">?</div>
+        
+        <div class="options" id="options"></div>
+        
+        <div class="progress-container"><div id="progress"></div></div>
+        <div class="teacher-panel" id="teacher-nav"></div>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const SoundFX = {
+            playTone: (freq, type, duration, vol=0.1) => {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type; osc.frequency.value = freq;
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.start(); osc.stop(audioCtx.currentTime + duration);
+            },
+            correct: () => { SoundFX.playTone(880, 'sine', 0.1); setTimeout(() => SoundFX.playTone(1760, 'sine', 0.2), 100); },
+            wrong: () => { SoundFX.playTone(150, 'sawtooth', 0.3, 0.2); },
+            levelClear: () => { [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => SoundFX.playTone(f, 'triangle', 0.4), i*150)); },
+            perfect: () => { [523, 659, 783, 1046, 1318, 1568].forEach((f, i) => setTimeout(() => SoundFX.playTone(f, 'sine', 0.5), i*100)); }
+        };
+
+        // === 数据定义 (已修复 sa-so 映射) ===
+        const fullData = {
+            "a_line": { "hiragana": {"\u3042": "a", "\u3044": "i", "\u3046": "u", "\u3048": "e", "\u304a": "o"}, "katakana": {"\u30a2": "a", "\u30a4": "i", "\u30a6": "u", "\u30a8": "e", "\u30aa": "o"} },
+            "ka_line": { "hiragana": {"\u304b": "ka", "\u304d": "ki", "\u304f": "ku", "\u3051": "ke", "\u3053": "ko"}, "katakana": {"\u30ab": "ka", "\u30ad": "ki", "\u30af": "ku", "\u30b1": "ke", "\u30b3": "ko"} },
+            "sa_line": { "hiragana": {"\u3055": "sa", "\u3057": "shi", "\u3059": "su", "\u305b": "se", "\u305d": "so"}, "katakana": {"\u30b5": "sa", "\u30b7": "shi", "\u30b9": "su", "\u30bb": "se", "\u30bd": "so"} },
+            "ta_line": { "hiragana": {"\u305f": "ta", "\u3061": "chi", "\u3064": "tsu", "\u3066": "te", "\u3068": "to"}, "katakana": {"\u30bf": "ta", "\u30c1": "chi", "\u30c4": "tsu", "\u30c6": "te", "\u30c8": "to"} },
+            "na_line": { "hiragana": {"\u306a": "na", "\u306b": "ni", "\u306c": "nu", "\u306d": "ne", "\u306e": "no"}, "katakana": {"\u30ca": "na", "\u30cb": "ni", "\u30cc": "nu", "\u30cd": "ne", "\u30ce": "no"} }
+        };
+        
+        const lineCfg = [
+            {id:'ta_line', name:'た', color:'#a29bfe', light: '#f3f0ff'}, 
+            {id:'na_line', name:'な', color:'#fab1a0', light: '#fff2e8'}, 
+            {id:'all_5', name:'総合', color:'#fdcb6e', light: '#fffbe6'} 
+        ];
+        
+        // === 模式扩展 (5模式) ===
+        const modeCfg = [
+            {n: "読音"}, // 0
+            {n: "文字"}, // 1 (NEW)
+            {n: "連語"}, // 2
+            {n: "対応"}, // 3
+            {n: "変換"}  // 4
+        ];
+
+        const SAVE_KEY = 'kana_game_tana_v2'; 
+        let gameData = { maxUnlocked: 0, records: {} };
+        let curL = 0, curM = 0;
+        let levelQueue = [];
+        let currentQuestion = null;
+        let levelMistakes = 0; 
+        let isLocked = false; 
+        let particles = [];
+        
+        let timerInterval = null;
+        const TIME_LIMIT = 100; 
+        let timeLeft = TIME_LIMIT;
+        
+        const canvas = document.getElementById('fx-canvas'), ctx = canvas.getContext('2d');
+        const targetEl = document.getElementById('target');
+        const mascotEl = document.getElementById('mascot');
+        const daikichiEl = document.getElementById('daikichi');
+        const timerBarEl = document.getElementById('timer-bar');
+
+        function loadProgress() {
+            const saved = localStorage.getItem(SAVE_KEY);
+            if(saved) { try { gameData = JSON.parse(saved); } catch(e) {} }
+        }
+        function saveProgress() { localStorage.setItem(SAVE_KEY, JSON.stringify(gameData)); }
+        function resetProgress() {
+            if(confirm("進捗をリセットしますか？")) {
+                gameData = { maxUnlocked: 0, records: {} };
+                saveProgress();
+                initGame();
+            }
+        }
+
+        function initGame() {
+            document.getElementById('start-overlay').style.display = 'none';
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            loadProgress(); renderNav();
+            
+            // 15关 = 3行 * 5模式
+            let startId = gameData.maxUnlocked >= 15 ? 14 : gameData.maxUnlocked;
+            startLevel(Math.floor(startId / 5), startId % 5);
+            updateCanvas();
+        }
+
+        function renderNav() {
+            const nav = document.getElementById('teacher-nav'); nav.innerHTML = "";
+            lineCfg.forEach((l, li) => {
+                modeCfg.forEach((m, mi) => {
+                    let levelId = li * 5 + mi;
+                    const btn = document.createElement('div'); btn.className = 't-btn';
+                    let reward = gameData.records[levelId] || "";
+                    
+                    // === 核心修改：双层标签显示 ===
+                    let rowLabel = l.name === '総合' ? '総合' : l.name;
+                    btn.innerHTML = `
+                        <div style="display:flex; flex-direction:column; align-items:center; line-height:1.1;">
+                            <span style="font-size:9px; opacity:0.6;">${rowLabel}</span>
+                            <span style="font-size:11px;">${m.n}</span>
+                        </div>
+                        <span class="t-btn-reward">${reward}</span>
+                    `;
+                    
+                    btn.id = `nav-${li}-${mi}`;
+                    if(levelId > gameData.maxUnlocked) { btn.classList.add('locked'); } 
+                    else { btn.onclick = () => jump(li, mi); btn.style.backgroundColor = l.light; }
+                    nav.appendChild(btn);
+                });
+            });
+        }
+
+        function startLevel(l, m) {
+            curL = l; curM = m; levelMistakes = 0; levelQueue = []; isLocked = false;
+            stopTimer(); 
+            
+            let displayTitle = lineCfg[curL].name === '総合' ? "あ-な行総合" : `${lineCfg[curL].name}行`;
+            document.getElementById('level-display').innerText = `${displayTitle} - ${modeCfg[curM].n}`;
+            
+            document.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
+            let activeBtn = document.getElementById(`nav-${curL}-${curM}`);
+            if(activeBtn) { activeBtn.classList.add('active'); activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+
+            const prog = document.getElementById('progress'); prog.style.backgroundColor = lineCfg[curL].color; prog.style.width = "0%";
+
+            let poolH = {}, poolK = {};
+            if(lineCfg[curL].id === 'all_5') { 
+                ['a_line','ka_line','sa_line','ta_line','na_line'].forEach(k => { 
+                    Object.assign(poolH, fullData[k].hiragana); 
+                    Object.assign(poolK, fullData[k].katakana); 
+                }); 
+            } else { 
+                Object.assign(poolH, fullData[lineCfg[curL].id].hiragana); 
+                Object.assign(poolK, fullData[lineCfg[curL].id].katakana); 
+            }
+            const keys = Object.keys(poolH);
+
+            // 单字类题目(0,1,3)全量洗牌，词组类(2,4)随机生成
+            if(curM === 0 || curM === 1 || curM === 3) {
+                let shuffled = [...keys].sort(() => Math.random() - 0.5);
+                shuffled.slice(0, 5).forEach(k => levelQueue.push(generateOneQuestion(curM, poolH, poolK, keys, k)));
+            } else {
+                let used = new Set();
+                while(levelQueue.length < 5) {
+                    let q = generateOneQuestion(curM, poolH, poolK, keys, null);
+                    if(!used.has(q.target)) { used.add(q.target); levelQueue.push(q); }
+                }
+            }
+            renderNextQuestion();
+        }
+
+        function generateOneQuestion(mode, pH, pK, keys, forceKey) {
+            let target="", ans="", choices=[];
+            function getThreeUniqueKeys() {
+                let sel=[], available=[...keys];
+                for(let i=0; i<3; i++) {
+                    if(available.length===0) break;
+                    let r=Math.floor(Math.random()*available.length);
+                    sel.push(available[r]); available.splice(r,1);
+                }
+                return sel;
+            }
+            
+            if(mode===0) { // H -> R
+                target = forceKey || keys[Math.floor(Math.random()*keys.length)]; ans=pH[target]; choices=[ans];
+                while(choices.length<4) { let r=Object.values(pH)[Math.floor(Math.random()*Object.values(pH).length)]; if(!choices.includes(r)) choices.push(r); }
+            } 
+            else if(mode===1) { // R -> H (NEW)
+                let k = forceKey || keys[Math.floor(Math.random()*keys.length)];
+                target = pH[k]; // Romaji
+                ans = k;        // Hiragana
+                choices=[ans];
+                while(choices.length<4) { let r=keys[Math.floor(Math.random()*keys.length)]; if(!choices.includes(r)) choices.push(r); }
+            }
+            else if(mode===2) { // Word H -> R
+                let sel=getThreeUniqueKeys(); target=sel.join(""); ans=sel.map(k=>pH[k]).join(" "); choices=[ans];
+                while(choices.length<4) { let f=getThreeUniqueKeys().map(k=>pH[k]).join(" "); if(!choices.includes(f)) choices.push(f); }
+            } 
+            else if(mode===3) { // H -> K
+                target = forceKey || keys[Math.floor(Math.random()*keys.length)]; let roma=pH[target]; ans=Object.keys(pK).find(k=>pK[k]===roma); choices=[ans];
+                let pKK=Object.keys(pK); while(choices.length<4) { let r=pKK[Math.floor(Math.random()*pKK.length)]; if(!choices.includes(r)) choices.push(r); }
+            } 
+            else { // Word H -> K
+                let sel=getThreeUniqueKeys(); target=sel.join(""); ans=sel.map(k=>Object.keys(pK).find(pk=>pK[pk]===pH[k])).join(""); choices=[ans];
+                while(choices.length<4) { let f=getThreeUniqueKeys().map(k=>Object.keys(pK).find(pk=>pK[pk]===pH[k])).join(""); if(!choices.includes(f)) choices.push(f); }
+            }
+            choices.sort(()=>0.5-Math.random());
+            return {target, ans, choices};
+        }
+
+        function startTimer() {
+            stopTimer();
+            timeLeft = TIME_LIMIT;
+            updateTimerVisual();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerVisual();
+                if(timeLeft <= 0) {
+                    stopTimer();
+                    handleAnswer(null, null, true); 
+                }
+            }, 100); 
+        }
+
+        function stopTimer() {
+            if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        }
+
+        function updateTimerVisual() {
+            let pct = (timeLeft / TIME_LIMIT) * 100;
+            timerBarEl.style.width = pct + "%";
+            if(timeLeft < 30) { timerBarEl.classList.add('timer-urgent'); } else { timerBarEl.classList.remove('timer-urgent'); }
+        }
+
+        function renderNextQuestion() {
+            if(levelQueue.length === 0) { showLevelComplete(); return; }
+            currentQuestion = levelQueue[0];
+            targetEl.innerText = currentQuestion.target;
+            targetEl.classList.remove('target-correct');
+            document.getElementById('queue-count').innerText = levelQueue.length;
+            
+            mascotEl.innerText = "頑張れ！( •̀ ω •́ )y"; mascotEl.style.color = "#555";
+            isLocked = false;
+            
+            const container = document.getElementById('options'); container.innerHTML = "";
+            currentQuestion.choices.forEach(o => {
+                const b = document.createElement('button'); b.className = 'option-btn'; b.innerText = o;
+                b.onclick = () => handleAnswer(b, o);
+                container.appendChild(b);
+            });
+
+            startTimer();
+        }
+
+        function handleAnswer(btn, val, isTimeout=false) {
+            if(isLocked || (btn && btn.classList.contains('btn-wrong'))) return;
+            stopTimer(); 
+
+            if(!isTimeout && val === currentQuestion.ans) {
+                isLocked = true;
+                btn.classList.add('btn-correct'); targetEl.classList.add('target-correct');
+                SoundFX.correct(); mascotEl.innerText = "正解！(≧▽≦)/"; mascotEl.style.color = "var(--success-green)";
+                triggerSakura();
+                levelQueue.shift();
+                let p = Math.max(0, 100 - (levelQueue.length * 20)); document.getElementById('progress').style.width = p + "%";
+                setTimeout(() => renderNextQuestion(), 600);
+            } else {
+                if(btn) btn.classList.add('btn-wrong');
+                SoundFX.wrong(); triggerThunder();
+                levelMistakes++;
+                
+                if(isTimeout) { mascotEl.innerText = "時間切れ！( >﹏< )"; } else { mascotEl.innerText = "ドンマイ！( >﹏< )"; }
+                mascotEl.style.color = "var(--danger-red)";
+                
+                document.getElementById('game-container').classList.add('penalty-active');
+                setTimeout(() => document.getElementById('game-container').classList.remove('penalty-active'), 300);
+
+                let copy1 = JSON.parse(JSON.stringify(currentQuestion));
+                let copy2 = JSON.parse(JSON.stringify(currentQuestion));
+                copy1.choices.sort(() => Math.random() - 0.5);
+                copy2.choices.sort(() => Math.random() - 0.5);
+                levelQueue.shift(); 
+                insertRandomly(copy1); insertRandomly(copy2);
+                document.getElementById('queue-count').innerText = levelQueue.length;
+                
+                isLocked = true;
+                setTimeout(() => renderNextQuestion(), 800);
+            }
+        }
+
+        function insertRandomly(item) {
+            if(levelQueue.length === 0) levelQueue.push(item);
+            else {
+                let idx = Math.floor(Math.random() * levelQueue.length) + 1;
+                if(idx > levelQueue.length) idx = levelQueue.length;
+                levelQueue.splice(idx, 0, item);
+            }
+        }
+
+        function showLevelComplete() {
+            let rewardIcon = "🌺", rewardText = "合格", borderColor = "#f5222d", titleText = "小吉";
+            if(levelMistakes === 0) { rewardIcon = "🏆"; titleText = "大吉"; rewardText = "完璧!"; borderColor = "#ffd700"; SoundFX.perfect(); } 
+            else if(levelMistakes === 1) { rewardIcon = "🥇"; titleText = "中吉"; rewardText = "優秀!"; borderColor = "#c0c0c0"; SoundFX.levelClear(); } 
+            else { SoundFX.levelClear(); }
+            
+            let cid = curL*5+curM; 
+            let ranks = {"🏆":3,"🥇":2,"🌺":1};
+            if(ranks[rewardIcon] >= (ranks[gameData.records[cid]]||0)) gameData.records[cid] = rewardIcon;
+            if(cid+1 > gameData.maxUnlocked) gameData.maxUnlocked = cid+1;
+            
+            saveProgress(); renderNav();
+            
+            document.getElementById('daikichi-title').innerText = titleText;
+            document.getElementById('daikichi-icon').innerText = rewardIcon;
+            document.getElementById('daikichi-msg').innerText = rewardText;
+            daikichiEl.style.borderColor = borderColor; daikichiEl.style.color = borderColor; daikichiEl.classList.add('show');
+            if(levelMistakes === 0) for(let i=0;i<60;i++) triggerSakura(true); else for(let i=0;i<30;i++) triggerSakura(true);
+        }
+
+        function nextLevelAction() {
+            daikichiEl.classList.remove('show');
+            let nId = curL*5+curM+1; 
+            if(nId >= 15) { alert("すべてのステージをクリアしました！おめでとう！"); return; }
+            startLevel(Math.floor(nId/5), nId%5);
+        }
+        function jump(l, m) { daikichiEl.classList.remove('show'); startLevel(l, m); }
+
+        function triggerSakura(isLarge = false) { 
+            let count = isLarge ? 5 : 20;
+            for(let i=0;i<count;i++) particles.push({x:Math.random()*canvas.width, y:-10, r:Math.random()*4+2, dx:Math.random()*2-1, dy:Math.random()*2+2, color:'#ffb7c5', type:'sakura'}); 
+        }
+        function triggerThunder() { particles.push({active:12, type:'thunder'}); }
+        function updateCanvas() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            for(let i=particles.length-1;i>=0;i--) {
+                let p=particles[i];
+                if(p.type==='sakura'){ p.x+=p.dx; p.y+=p.dy; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fillStyle=p.color; ctx.fill(); if(p.y>canvas.height) particles.splice(i,1); }
+                else { ctx.fillStyle=`rgba(255,255,255,${p.active/12})`; ctx.fillRect(0,0,canvas.width,canvas.height); p.active--; if(p.active<=0) particles.splice(i,1); }
+            }
+            requestAnimationFrame(updateCanvas);
+        }
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }; window.onresize();
+    </script>
+</body>
+</html>
