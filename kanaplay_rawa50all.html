@@ -203,6 +203,11 @@
             .teacher-panel { max-height: 20vh; }
         }
 
+    
+        /* Minimal filing link at the bottom edge of the game page */
+        .icp-filing { position: fixed; bottom: 0; left: 0; width: 100%; z-index: 1201; text-align: center; font: 11px/18px -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif; background: rgba(255,255,255,.84); }
+        .icp-filing a { color: #666; text-decoration: none; }
+        .icp-filing a:hover, .icp-filing a:focus-visible { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -703,5 +708,10 @@
         }
         window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }; window.onresize();
     </script>
+
+    <!-- ICP filing information: keep visible without changing the game layout -->
+    <footer class="icp-filing" aria-label="网站备案信息">
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">蜀ICP备2026068525号-1</a>
+    </footer>
 </body>
 </html>
